@@ -1,6 +1,17 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+
+[System.Serializable]
+public class Result
+{
+    public int totalScore = 0;
+
+    [Header("REF UI")]
+    public Text textTime;
+    public Text textTotalScore;
+}
 
 [System.Serializable]
 public class Word
@@ -9,6 +20,9 @@ public class Word
 
     [Header("Leave empty if you want randomize")]
     public string desiredRandom;
+
+    [Space(10)]
+    public float timelimit;
 
     public string GetString()
     {
@@ -37,6 +51,10 @@ public class Word
 public class WordScramble : MonoBehaviour
 {
     public Word[] words;
+
+    [Space(10)]
+    public Result result;
+
     [Header("UI Refrence")]
     public CharObj prefab;
     public Transform container;
@@ -49,6 +67,8 @@ public class WordScramble : MonoBehaviour
     public static WordScramble main;
     public float LerpSpeed = 5;
 
+    private float totalScore;
+
     void Awake()
     {
         main = this;
@@ -57,11 +77,15 @@ public class WordScramble : MonoBehaviour
     void Start()
     {
         ShowScramble(currentWord);
+        result.textTotalScore.text = result.totalScore.ToString();
     }
 
     void Update()
     {
         RepositionObject();
+
+        totalScore = Mathf.Lerp(totalScore, result.totalScore, Time.deltaTime * 5);
+        result.textTotalScore.text = Mathf.RoundToInt(totalScore).ToString();
     }
 
     void RepositionObject()
@@ -117,6 +141,7 @@ public class WordScramble : MonoBehaviour
         }
 
         currentWord = index;
+        StartCoroutine(TimeLimit());
     }
 
     public void Swap(int indexA, int indexB)
@@ -169,10 +194,45 @@ public class WordScramble : MonoBehaviour
             word += charObj.character;
         }
 
-        if (word == words[currentWord].word)
+        if (timelimit <= 0)
         {
             currentWord++;
             ShowScramble(currentWord);
+            yield break;
         }
+
+        if (word == words[currentWord].word)
+        {
+            currentWord++;
+            result.totalScore += Mathf.RoundToInt(timelimit);
+            result.textTotalScore.text = result.totalScore.ToString();
+            ShowScramble(currentWord);
+        }
+    }
+
+    float timelimit;
+    IEnumerator TimeLimit()
+    {
+        timelimit = words[currentWord].timelimit;
+        result.textTime.text = Mathf.RoundToInt(timelimit).ToString();
+
+        int myWod = currentWord;
+
+        yield return new WaitForSeconds(1);
+
+        while (timelimit > 0)
+        {
+            if (myWod != currentWord)
+            {
+                yield break;
+            }
+
+            timelimit -= Time.deltaTime;
+            result.textTime.text = Mathf.RoundToInt(timelimit).ToString();
+            yield return null;
+        }
+
+        result.textTotalScore.text = result.totalScore.ToString();
+        CheckWord();
     }
 }
